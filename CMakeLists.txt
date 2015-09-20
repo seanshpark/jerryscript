@@ -80,6 +80,12 @@ project (Jerry CXX C ASM)
   set(EXTERNAL_BUILD FALSE)
 
   option(STRIP_RELEASE_BINARY "Strip symbols from release binaries" ON)
+ elseif("${PLATFORM}" STREQUAL "NUTTX")
+  set(PLATFORM_EXT "NUTTX")
+  set(EXTERNAL_BUILD TRUE)
+  set(EXTERNAL_BUILD_ENTRY TRUE)
+
+  option(STRIP_RELEASE_BINARY "Strip symbols from release binaries" ON)
  elseif("${PLATFORM}" STREQUAL "MCU")
   set(PLATFORM_EXT "MCU_${CMAKE_SYSTEM_VERSION}")
   set(EXTERNAL_BUILD FALSE)
@@ -89,6 +95,7 @@ project (Jerry CXX C ASM)
  elseif("${PLATFORM}" STREQUAL "EXTERNAL")
   set(PLATFORM_EXT "EXTERNAL")
   set(EXTERNAL_BUILD TRUE)
+  set(EXTERNAL_BUILD_ENTRY FALSE)
 
   set(EXTERNAL_LIBC_INTERFACE "UNDEFINED" CACHE STRING "Path to external libc include directory")
   set(EXTERNAL_LIBS_INTERFACE "UNDEFINED" CACHE STRING "Path to external libraries' include directory")
@@ -184,6 +191,12 @@ project (Jerry CXX C ASM)
      "COMPACT_PROFILE_MINIMAL"
      "FULL_PROFILE MEMORY_STATISTICS"
      "COMPACT_PROFILE_MINIMAL MEMORY_STATISTICS")
+
+ # NuttX
+  set(MODIFIERS_LISTS_NUTTX
+     "FULL_PROFILE"
+     "COMPACT_PROFILE"
+     "COMPACT_PROFILE_MINIMAL")
 
  # MCU
   # stm32f3
@@ -289,6 +302,9 @@ project (Jerry CXX C ASM)
 
    # Darwin
     set(SOURCE_JERRY_STANDALONE_MAIN_DARWIN main-darwin.cpp)
+
+   # NuttX
+    set(SOURCE_JERRY_STANDALONE_MAIN_NUTTX main-nuttx.cpp)
 
    # MCU
     # stm32f3
@@ -397,11 +413,11 @@ endif()
     target_include_directories(${TARGET_NAME} SYSTEM PRIVATE ${INCLUDE_EXTERNAL_LIBS_INTERFACE})
     if(("${PLATFORM}" STREQUAL "DARWIN") AND (NOT CMAKE_COMPILER_IS_GNUCXX))
      target_link_libraries(${TARGET_NAME} ${CORE_TARGET_NAME} ${LIBC_TARGET_NAME}
-		                   ${FDLIBM_TARGET_NAME} ${PREFIX_IMPORTED_LIB}libclang_rt.osx)
-	else()
+                           ${FDLIBM_TARGET_NAME} ${PREFIX_IMPORTED_LIB}libclang_rt.osx)
+    else()
      target_link_libraries(${TARGET_NAME} ${CORE_TARGET_NAME} ${LIBC_TARGET_NAME}
-		                   ${FDLIBM_TARGET_NAME} ${PREFIX_IMPORTED_LIB}libgcc ${PREFIX_IMPORTED_LIB}libgcc_eh)
-	endif()
+                           ${FDLIBM_TARGET_NAME} ${PREFIX_IMPORTED_LIB}libgcc ${PREFIX_IMPORTED_LIB}libgcc_eh)
+    endif()
 
     add_cppcheck_target(${TARGET_NAME})
 
@@ -426,6 +442,18 @@ endif()
     add_custom_target(${TARGET_NAME} ALL)
 
     add_dependencies(${TARGET_NAME} ${FDLIBM_TARGET_NAME} ${CORE_TARGET_NAME})
+
+    if(${EXTERNAL_BUILD_ENTRY})
+     add_library(${TARGET_NAME}-entry STATIC ${SOURCE_JERRY_STANDALONE_MAIN})
+     set_property(TARGET ${TARGET_NAME}-entry
+                  PROPERTY COMPILE_FLAGS "${COMPILE_FLAGS_JERRY} ${CXX_FLAGS_JERRY} ${FLAGS_COMMON_${BUILD_MODE}}")
+     target_compile_definitions(${TARGET_NAME}-entry PRIVATE ${DEFINES_JERRY})
+     target_include_directories(${TARGET_NAME}-entry PRIVATE ${INCLUDE_CORE_INTERFACE})
+     target_include_directories(${TARGET_NAME}-entry SYSTEM PRIVATE ${INCLUDE_LIBC_INTERFACE})
+     target_include_directories(${TARGET_NAME}-entry SYSTEM PRIVATE ${INCLUDE_EXTERNAL_LIBS_INTERFACE})
+     add_dependencies(${TARGET_NAME} ${TARGET_NAME}-entry)
+    endif()
+
     add_custom_command(TARGET ${TARGET_NAME}
                        POST_BUILD
                        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/${TARGET_NAME}
@@ -479,7 +507,7 @@ endif()
     if(("${PLATFORM}" STREQUAL "DARWIN") AND (NOT CMAKE_COMPILER_IS_GNUCXX))
       target_link_libraries(${TARGET_NAME} ${CORE_TARGET_NAME} ${LIBC_TARGET_NAME} ${FDLIBM_TARGET_NAME}
                             ${PREFIX_IMPORTED_LIB}libclang_rt.osx)
-	else()
+    else()
       target_link_libraries(${TARGET_NAME} ${CORE_TARGET_NAME} ${LIBC_TARGET_NAME} ${FDLIBM_TARGET_NAME}
                             ${PREFIX_IMPORTED_LIB}libgcc ${PREFIX_IMPORTED_LIB}libgcc_eh)
     endif()

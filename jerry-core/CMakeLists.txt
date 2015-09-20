@@ -98,6 +98,13 @@ project (JerryCore CXX C ASM)
     set(DEFINES_JERRY_EXTERNAL CONFIG_MEM_HEAP_AREA_SIZE=${MEM_HEAP_AREA_SIZE_EXTERNAL})
    endif()
 
+  # NuttX
+   if(DEFINED EXTERNAL_MEM_HEAP_SIZE_KB)
+    math(EXPR MEM_HEAP_AREA_SIZE_NUTTX "${EXTERNAL_MEM_HEAP_SIZE_KB} * 1024")
+    set(DEFINES_JERRY_NUTTX CONFIG_MEM_HEAP_AREA_SIZE=${MEM_HEAP_AREA_SIZE_NUTTX})
+   endif()
+
+
 # Include directories
  set(INCLUDE_CORE
      ${CMAKE_SOURCE_DIR}/jerry-core
@@ -172,6 +179,12 @@ project (JerryCore CXX C ASM)
     set(TARGET_NAME ${TARGET_NAME}${MODIFIER_SUFFIX_${MODIFIER}})
     set(DEFINES_JERRY ${DEFINES_JERRY} ${DEFINES_${MODIFIER}})
    endforeach()
+
+   # temporary patch for
+   #   error: conversion to 'unsigned char:1' from 'uint32_t {aka unsigned int}'
+   if("${PLATFORM}" STREQUAL "NUTTX")
+    set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wno-conversion")
+   endif()
 
    add_library(${TARGET_NAME}.jerry-core STATIC ${SOURCE_CORE})
    set_property(TARGET ${TARGET_NAME}.jerry-core

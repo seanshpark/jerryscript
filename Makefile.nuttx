@@ -1,0 +1,34 @@
+#
+
+CURDIR     = `pwd`
+NUTTX     ?= $(CURDIR)/../nuttx/nuttx
+NUTTXINC   = $(NUTTX)/include
+NUTTXLIB   = $(NUTTX)/lib
+OUTPUT     = build/obj-nuttx
+
+all:
+	mkdir -p $(OUTPUT)
+	cmake -B$(OUTPUT) -H./ \
+          -DEXTERNAL_LIBC_INTERFACE=$(NUTTXINC) \
+          -DEXTERNAL_CMAKE_SYSTEM_PROCESSOR=arm \
+          -DEXTERNAL_MEM_HEAP_SIZE_KB=64 \
+          -DCMAKE_TOOLCHAIN_FILE=build/configs/toolchain_nuttx_armv7m-hf.cmake \
+          -DENABLE_LTO=OFF
+
+	make -C $(OUTPUT) debug.nuttx release.nuttx
+	cp `cat $(OUTPUT)/debug.nuttx/list` $(OUTPUT)/.
+	cp `cat $(OUTPUT)/release.nuttx/list` $(OUTPUT)/.
+
+copydebug:
+	cp $(OUTPUT)/libdebug.jerry-core.a $(NUTTXLIB)/libjerrycore.a
+	cp $(OUTPUT)/libdebug.jerry-fdlibm.third_party.lib.a $(NUTTXLIB)/libfdlibm.a
+	cp $(OUTPUT)/libdebug.nuttx-entry.a $(NUTTXLIB)/libjerryentry.a
+
+copyrel:
+	cp $(OUTPUT)/librelease.jerry-core.a $(NUTTXLIB)/libjerrycore.a
+	cp $(OUTPUT)/librelease.jerry-fdlibm.third_party.lib.a $(NUTTXLIB)/libfdlibm.a
+	cp $(OUTPUT)/librelease.nuttx-entry.a $(NUTTXLIB)/libjerryentry.a
+
+
+clean:
+	rm -rf $(OUTPUT)
